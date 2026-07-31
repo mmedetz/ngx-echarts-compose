@@ -27,7 +27,8 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "tsConfig": "projects/ngx-echarts-compose/tsconfig.spec.json"
+            "tsConfig": "projects/ngx-echarts-compose/tsconfig.spec.json",
+            "include": ["src/**/*.spec.ts", "../tests/**/*.spec.ts"]
           }
         },
         "lint": {

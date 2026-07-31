@@ -1,0 +1,99 @@
+import { describe, expect, it } from 'vitest';
+import { assembleOption } from '../../src/lib/core/assembly';
+import { ARRAY_SLOTS, type ChartFeatureLike, type FeatureSlot } from '../../src/lib/core/types';
+
+function feature(
+  slot: FeatureSlot,
+  fragment: Record<string, unknown>,
+  refs: ChartFeatureLike['refs'] = () => ({}),
+  options: Record<string, unknown> = {},
+): ChartFeatureLike {
+  return { slot, fragment: () => fragment, options: () => options, refs };
+}
+
+describe('assembleOption', () => {
+  it('groups features by slot into index-addressed arrays', () => {
+    const xAxis = feature('xAxis', { type: 'value' });
+    const series = feature('series', { type: 'line' });
+
+    const result = assembleOption([xAxis, series], {}, () => 'id', ARRAY_SLOTS);
+
+    expect(result['xAxis']).toEqual([{ id: 'id', type: 'value' }]);
+    expect(result['series']).toEqual([{ id: 'id', type: 'line' }]);
+  });
+
+  it('places base option items before template items in the same slot', () => {
+    const series = feature('series', { type: 'line' });
+
+    const result = assembleOption(
+      [series],
+      { series: [{ type: 'bar', id: 'base-0' }] },
+      () => 'tpl-0',
+      ARRAY_SLOTS,
+    );
+
+    expect(result['series']).toEqual([
+      { type: 'bar', id: 'base-0' },
+      { id: 'tpl-0', type: 'line' },
+    ]);
+  });
+
+  it('lets typed fragment fields override the options bag', () => {
+    const series = feature('series', { smooth: true }, () => ({}), { smooth: false });
+
+    const result = assembleOption([series], {}, () => 'id', ARRAY_SLOTS);
+
+    expect((result['series'] as { smooth: boolean }[])[0].smooth).toBe(true);
+  });
+
+  it('resolves a feature ref to the target feature stable id', () => {
+    const xAxis = feature('xAxis', { type: 'value' });
+    const series = feature('series', { type: 'line' }, () => ({ xAxis }));
+
+    const ids = new Map<ChartFeatureLike, string>([
+      [xAxis, 'x-0'],
+      [series, 'series-0'],
+    ]);
+    const result = assembleOption([xAxis, series], {}, (f) => ids.get(f) ?? 'unknown', ARRAY_SLOTS);
+
+    expect((result['series'] as { xAxisId: string }[])[0].xAxisId).toBe('x-0');
+  });
+
+  it('resolves a string ref directly as the target id, ignoring ecId', () => {
+    const series = feature('series', { type: 'line' }, () => ({ xAxis: 'external-axis' }));
+
+    const result = assembleOption([series], {}, () => 'unused', ARRAY_SLOTS);
+
+    expect((result['series'] as { xAxisId: string }[])[0].xAxisId).toBe('external-axis');
+  });
+
+  it('omits a ref key entirely when the ref target is null', () => {
+    const series = feature('series', { type: 'line' }, () => ({ xAxis: null }));
+
+    const result = assembleOption([series], {}, () => 'id', ARRAY_SLOTS);
+
+    expect((result['series'] as { xAxisId?: string }[])[0].xAxisId).toBeUndefined();
+  });
+
+  it('preserves non-array-slot keys from base options untouched', () => {
+    const result = assembleOption([], { tooltip: { show: true } }, () => 'id', []);
+
+    expect(result['tooltip']).toEqual({ show: true });
+  });
+
+  it('omits a slot entirely when it has no base items, no features, and was never managed', () => {
+    const result = assembleOption([], {}, () => 'id', []);
+
+    expect(result['grid']).toBeUndefined();
+    expect(result['xAxis']).toBeUndefined();
+    expect(result['yAxis']).toBeUndefined();
+    expect(result['series']).toBeUndefined();
+  });
+
+  it('emits an empty array for a previously-managed slot that is now empty, so replaceMerge clears it', () => {
+    const result = assembleOption([], {}, () => 'id', ['series']);
+
+    expect(result['series']).toEqual([]);
+    expect(result['grid']).toBeUndefined();
+  });
+});

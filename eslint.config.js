@@ -15,7 +15,10 @@ module.exports = tseslint.config(
     rules: {
       '@angular-eslint/directive-selector': [
         'error',
-        { type: 'attribute', prefix: ['ec', 'app'], style: 'camelCase' },
+        [
+          { type: 'element', prefix: ['ec'], style: 'kebab-case' },
+          { type: 'attribute', prefix: ['ec', 'app'], style: 'camelCase' },
+        ],
       ],
       '@angular-eslint/component-selector': [
         'error',

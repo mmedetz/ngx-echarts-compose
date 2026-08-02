@@ -16,7 +16,7 @@ import type { ECharts, EChartsOption } from 'echarts';
 import { assembleOption } from './assembly';
 import { EC_CHART_HOST, type ChartFeature, type ChartHost } from './chart-feature';
 import { EcCanvasDirective, EcSvgDirective } from './renderer.directives';
-import type { FeatureSlot } from './types';
+import type { AnyChartOption, FeatureSlot } from './types';
 
 @Directive({
   selector: 'ec-chart',
@@ -33,8 +33,8 @@ export class EcChartDirective implements ChartHost {
   readonly options = input<EChartsOption>({});
   readonly theme = input<string | object | undefined>(undefined);
 
-  private readonly registered = signal<readonly ChartFeature[]>([]);
-  private readonly featureIds = new WeakMap<ChartFeature, string>();
+  private readonly registered = signal<readonly ChartFeature<AnyChartOption>[]>([]);
+  private readonly featureIds = new WeakMap<ChartFeature<AnyChartOption>, string>();
   private readonly everManagedSlots = new Set<FeatureSlot>();
   private nextId = 0;
   private instance?: ECharts;
@@ -67,7 +67,7 @@ export class EcChartDirective implements ChartHost {
     assembleOption(
       this.features(),
       this.options() as unknown as Record<string, unknown>,
-      (feature) => this.ecId(feature as ChartFeature),
+      (feature) => this.ecId(feature as ChartFeature<AnyChartOption>),
       this.managedSlots(),
     ),
   );
@@ -103,11 +103,11 @@ export class EcChartDirective implements ChartHost {
     });
   }
 
-  register(feature: ChartFeature): void {
+  register(feature: ChartFeature<AnyChartOption>): void {
     this.registered.update((list) => [...list, feature]);
   }
 
-  unregister(feature: ChartFeature): void {
+  unregister(feature: ChartFeature<AnyChartOption>): void {
     this.registered.update((list) => list.filter((f) => f !== feature));
   }
 
@@ -115,7 +115,7 @@ export class EcChartDirective implements ChartHost {
     return this.instance;
   }
 
-  private ecId(feature: ChartFeature): string {
+  private ecId(feature: ChartFeature<AnyChartOption>): string {
     const explicit = feature.id() ?? feature.localId();
     if (explicit) return explicit;
 

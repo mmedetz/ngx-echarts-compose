@@ -1,5 +1,6 @@
-import { Directive, computed } from '@angular/core';
+import { Directive, Signal, computed } from '@angular/core';
 import { GridComponent } from 'echarts/components';
+import type { YAXisComponentOption } from 'echarts';
 import { useChartModules } from '../core/use-chart-modules';
 import { AxisFeature } from './axis-feature';
 
@@ -8,10 +9,12 @@ import { AxisFeature } from './axis-feature';
   exportAs: 'ecValueYAxis',
   host: { style: 'display: none' },
 })
-export class EcValueYAxisDirective extends AxisFeature {
+export class EcValueYAxisDirective extends AxisFeature<YAXisComponentOption> {
   override readonly slot = 'yAxis' as const;
 
-  override readonly fragment = computed(() => ({ type: 'value' as const }));
+  override readonly fragment: Signal<YAXisComponentOption> = computed(() => ({
+    type: 'value' as const,
+  }));
 
   constructor() {
     super();

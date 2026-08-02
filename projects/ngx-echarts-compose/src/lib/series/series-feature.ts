@@ -24,7 +24,7 @@ export abstract class SeriesFeature<
   readonly yAxis = input<AxisFeature<AnyChartOption>>();
 
   override readonly refs = computed(() => ({
-    xAxis: this.xAxis() ?? null,
-    yAxis: this.yAxis() ?? null,
+    xAxis: this.xAxis(),
+    yAxis: this.yAxis(),
   }));
 }

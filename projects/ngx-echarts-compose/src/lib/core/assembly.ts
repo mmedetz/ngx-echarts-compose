@@ -41,7 +41,7 @@ function resolveRefs(feature: ChartFeatureLike, ecId: EcId): Record<string, unkn
   const result: Record<string, unknown> = {};
 
   for (const [refKey, target] of Object.entries(feature.refs())) {
-    if (target == null || Array.isArray(target)) continue;
+    if (target === undefined) continue;
 
     result[`${refKey}Id`] = typeof target === 'string' ? target : ecId(target);
   }

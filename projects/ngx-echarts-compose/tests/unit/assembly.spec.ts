@@ -67,8 +67,8 @@ describe('assembleOption', () => {
     expect((result['series'] as { xAxisId: string }[])[0].xAxisId).toBe('external-axis');
   });
 
-  it('omits a ref key entirely when the ref target is null', () => {
-    const series = feature('series', { type: 'line' }, () => ({ xAxis: null }));
+  it('omits a ref key entirely when the ref target is undefined', () => {
+    const series = feature('series', { type: 'line' }, () => ({ xAxis: undefined }));
 
     const result = assembleOption([series], {}, () => 'id', ARRAY_SLOTS);
 

@@ -38,7 +38,7 @@ export abstract class ChartFeature<TOption extends AnyChartOption = Record<strin
 
   abstract readonly slot: FeatureSlot;
   abstract readonly fragment: Signal<TOption>;
-  readonly refs: Signal<Record<string, ChartFeatureRef | ChartFeatureRef[] | null>> = signal({});
+  readonly refs: Signal<Record<string, ChartFeatureRef | undefined>> = signal({});
 
   constructor() {
     this.host.register(this);

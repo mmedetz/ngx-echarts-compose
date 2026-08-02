@@ -20,5 +20,5 @@ export interface ChartFeatureLike {
   readonly slot: FeatureSlot;
   options(): AnyChartOption;
   fragment(): AnyChartOption;
-  refs(): Record<string, ChartFeatureLike | string | (ChartFeatureLike | string)[] | null>;
+  refs(): Record<string, ChartFeatureLike | string | undefined>;
 }

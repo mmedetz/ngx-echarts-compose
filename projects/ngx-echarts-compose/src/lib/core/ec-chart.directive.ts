@@ -100,19 +100,15 @@ export class EcChartDirective implements ChartHost {
       const position = a.elementRef.nativeElement.compareDocumentPosition(
         b.elementRef.nativeElement,
       );
-      return position & Node.DOCUMENT_POSITION_FOLLOWING
-        ? -1
-        : position & Node.DOCUMENT_POSITION_PRECEDING
-          ? 1
-          : 0;
+      if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
     });
   }
 
   /** Slots are added and never removed — see the `managedSlots` note in CLAUDE.md. */
   private trackManagedSlots(features: readonly ChartFeature<AnyChartOption>[]): FeatureSlot[] {
-    for (const feature of features) {
-      this.everManagedSlots.add(feature.slot);
-    }
+    features.forEach(({slot}) =>  this.everManagedSlots.add(slot));
     return [...this.everManagedSlots];
   }
 

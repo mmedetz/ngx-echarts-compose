@@ -33,7 +33,6 @@ export abstract class ChartFeature<TOption extends AnyChartOption = Record<strin
   private readonly destroyRef = inject(DestroyRef);
 
   readonly id = input<string>();
-  readonly localId = input<string>();
   readonly options = input<Partial<TOption>>({});
 
   abstract readonly slot: FeatureSlot;

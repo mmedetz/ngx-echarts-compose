@@ -23,7 +23,7 @@ more axis/series types, presets) are not yet implemented — see [Roadmap](#road
 **Implemented**, under `projects/ngx-echarts-compose/src/lib/`:
 
 - `core/chart-feature.ts` — `ChartFeature` abstract base (self-registers via `EC_CHART_HOST`
-  injection token), `id`/`localId`/`options` inputs, `refs`.
+  injection token), `id`/`options` inputs, `refs`.
 - `core/ec-chart.directive.ts` — host directive: DOM-order feature sorting, `assembledOption`
   computed, `afterRenderEffect` writer (`notMerge` on first apply, `replaceMerge` after),
   `managedSlots` (sticky union of slots ever used), renderer conflict/missing checks in dev mode.
@@ -97,7 +97,7 @@ directives inside a wrapper's own view template, only projected content.
 **Identity is a stable `id`; array index is a derived wire format, recomputed on every emit.**
 ECharts' reference graph is index-based (`xAxisIndex`, `seriesIndex`, …), but index must not be
 identity across renders — removal/reorder would shift indices and cause `replaceMerge` to blend
-the wrong slots. Each feature gets a stable id (explicit `[id]`/`[localId]`, or host-assigned via
+the wrong slots. Each feature gets a stable id (explicit `[id]`, or host-assigned via
 `WeakMap<ChartFeature, string>` on first encounter) which is emitted into every fragment and used
 to resolve refs to `<slot>Id` fields (e.g. `xAxisId`) rather than raw indices — see `resolveRefs`
 in `assembly.ts`. Inside `@for`, supply an explicit `[id]` tied to the track key, since a

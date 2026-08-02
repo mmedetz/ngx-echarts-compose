@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import * as echarts from 'echarts/core';
 import type { ECharts, EChartsOption } from 'echarts';
-import { assembleOption } from './assembly';
+import { assembleOption, type FeatureIds } from './assembly';
 import { EC_CHART_HOST, type ChartFeature, type ChartHost } from './chart-feature';
 import { EcCanvasDirective, EcSvgDirective } from './renderer.directives';
 import type { AnyChartOption, FeatureSlot } from './types';
@@ -32,9 +32,12 @@ export class EcChartDirective implements ChartHost {
   readonly theme = input<string | object | undefined>(undefined);
 
   private readonly registered = signal<readonly ChartFeature<AnyChartOption>[]>([]);
-  private readonly featureIds = new WeakMap<ChartFeature<AnyChartOption>, string>();
   private readonly everManagedSlots = new Set<FeatureSlot>();
-  private nextId = 0;
+  /** Auto-assigned ids, cached per feature so they stay stable across renders. */
+  private readonly autoIds = new WeakMap<ChartFeature<AnyChartOption>, string>();
+  private nextAutoId = 0;
+  /** Every feature's id as of the last assembly run — the single source `getFeatureId` reads. */
+  private resolvedIds: FeatureIds = new Map();
   private instance?: ECharts;
   private firstApply = true;
 
@@ -59,10 +62,11 @@ export class EcChartDirective implements ChartHost {
       // sortByDomPosition or trackManagedSlots.
       const features = this.sortByDomPosition(this.registered());
       const managedSlots = this.trackManagedSlots(features);
+      this.resolvedIds = this.resolveIds(features);
       const option = assembleOption(
         features,
         this.options(),
-        (feature) => this.ecId(feature as ChartFeature<AnyChartOption>),
+        this.resolvedIds,
         managedSlots,
       ) as EChartsOption;
 
@@ -89,6 +93,16 @@ export class EcChartDirective implements ChartHost {
     return this.instance;
   }
 
+  /**
+   * The stable wire id ECharts sees for `feature` — its explicit `[id]`, or the host-assigned auto
+   * id, if one has been resolved yet. Reads straight from `resolvedIds`, the same map the last
+   * assembly run gave to `assembleOption`, so it's side-effect free: it never assigns an id, and
+   * returns `undefined` for a feature the assembly effect hasn't resolved one for yet.
+   */
+  getFeatureId(feature: ChartFeature<AnyChartOption>): string | undefined {
+    return this.resolvedIds.get(feature);
+  }
+
   /** Sorts by DOM position — the assembly source of truth. Only call post-render. */
   private sortByDomPosition(
     list: readonly ChartFeature<AnyChartOption>[],
@@ -112,15 +126,22 @@ export class EcChartDirective implements ChartHost {
     return [...this.everManagedSlots];
   }
 
-  private ecId(feature: ChartFeature<AnyChartOption>): string {
-    const explicit = feature.id() ?? feature.localId();
-    if (explicit) return explicit;
-
-    let id = this.featureIds.get(feature);
-    if (!id) {
-      id = `__ec_${this.nextId++}`;
-      this.featureIds.set(feature, id);
+  /**
+   * Resolves every feature's stable id in one pass: explicit `[id]` wins, otherwise a
+   * previously-assigned auto id, otherwise a freshly-assigned one. First-assignment order must
+   * follow DOM order (not registration order) for auto ids to be deterministic across renders —
+   * only call post-render, with the DOM-sorted `features` list.
+   */
+  private resolveIds(features: readonly ChartFeature<AnyChartOption>[]): FeatureIds {
+    const ids = new Map<ChartFeature<AnyChartOption>, string>();
+    for (const feature of features) {
+      let id = feature.id() ?? this.autoIds.get(feature);
+      if (!id) {
+        id = `__ec_${this.nextAutoId++}`;
+        this.autoIds.set(feature, id);
+      }
+      ids.set(feature, id);
     }
-    return id;
+    return ids;
   }
 }

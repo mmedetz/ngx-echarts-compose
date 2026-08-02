@@ -16,7 +16,11 @@ describe('assembleOption', () => {
     const xAxis = feature('xAxis', { type: 'value' });
     const series = feature('series', { type: 'line' });
 
-    const result = assembleOption([xAxis, series], {}, () => 'id', ARRAY_SLOTS);
+    const ids = new Map<ChartFeatureLike, string>([
+      [xAxis, 'id'],
+      [series, 'id'],
+    ]);
+    const result = assembleOption([xAxis, series], {}, ids, ARRAY_SLOTS);
 
     expect(result['xAxis']).toEqual([{ id: 'id', type: 'value' }]);
     expect(result['series']).toEqual([{ id: 'id', type: 'line' }]);
@@ -28,7 +32,7 @@ describe('assembleOption', () => {
     const result = assembleOption(
       [series],
       { series: [{ type: 'bar', id: 'base-0' }] },
-      () => 'tpl-0',
+      new Map([[series, 'tpl-0']]),
       ARRAY_SLOTS,
     );
 
@@ -41,7 +45,7 @@ describe('assembleOption', () => {
   it('lets typed fragment fields override the options bag', () => {
     const series = feature('series', { smooth: true }, () => ({}), { smooth: false });
 
-    const result = assembleOption([series], {}, () => 'id', ARRAY_SLOTS);
+    const result = assembleOption([series], {}, new Map([[series, 'id']]), ARRAY_SLOTS);
 
     expect((result['series'] as { smooth: boolean }[])[0].smooth).toBe(true);
   });
@@ -54,15 +58,15 @@ describe('assembleOption', () => {
       [xAxis, 'x-0'],
       [series, 'series-0'],
     ]);
-    const result = assembleOption([xAxis, series], {}, (f) => ids.get(f) ?? 'unknown', ARRAY_SLOTS);
+    const result = assembleOption([xAxis, series], {}, ids, ARRAY_SLOTS);
 
     expect((result['series'] as { xAxisId: string }[])[0].xAxisId).toBe('x-0');
   });
 
-  it('resolves a string ref directly as the target id, ignoring ecId', () => {
+  it('resolves a string ref directly as the target id, ignoring the id map', () => {
     const series = feature('series', { type: 'line' }, () => ({ xAxis: 'external-axis' }));
 
-    const result = assembleOption([series], {}, () => 'unused', ARRAY_SLOTS);
+    const result = assembleOption([series], {}, new Map([[series, 'unused']]), ARRAY_SLOTS);
 
     expect((result['series'] as { xAxisId: string }[])[0].xAxisId).toBe('external-axis');
   });
@@ -70,19 +74,19 @@ describe('assembleOption', () => {
   it('omits a ref key entirely when the ref target is undefined', () => {
     const series = feature('series', { type: 'line' }, () => ({ xAxis: undefined }));
 
-    const result = assembleOption([series], {}, () => 'id', ARRAY_SLOTS);
+    const result = assembleOption([series], {}, new Map([[series, 'id']]), ARRAY_SLOTS);
 
     expect((result['series'] as { xAxisId?: string }[])[0].xAxisId).toBeUndefined();
   });
 
   it('preserves non-array-slot keys from base options untouched', () => {
-    const result = assembleOption([], { tooltip: { show: true } }, () => 'id', []);
+    const result = assembleOption([], { tooltip: { show: true } }, new Map(), []);
 
     expect(result['tooltip']).toEqual({ show: true });
   });
 
   it('omits a slot entirely when it has no base items, no features, and was never managed', () => {
-    const result = assembleOption([], {}, () => 'id', []);
+    const result = assembleOption([], {}, new Map(), []);
 
     expect(result['grid']).toBeUndefined();
     expect(result['xAxis']).toBeUndefined();
@@ -91,7 +95,7 @@ describe('assembleOption', () => {
   });
 
   it('emits an empty array for a previously-managed slot that is now empty, so replaceMerge clears it', () => {
-    const result = assembleOption([], {}, () => 'id', ['series']);
+    const result = assembleOption([], {}, new Map(), ['series']);
 
     expect(result['series']).toEqual([]);
     expect(result['grid']).toBeUndefined();

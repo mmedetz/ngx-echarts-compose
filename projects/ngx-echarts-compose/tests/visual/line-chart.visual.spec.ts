@@ -84,7 +84,7 @@ function renderLineBarChart(): string {
     [bar, 'series-bar'],
   ]);
   const managedSlots = [...new Set(features.map((f) => f.slot))];
-  const option = assembleOption(features, { animation: false }, (f) => ids.get(f)!, managedSlots);
+  const option = assembleOption(features, { animation: false }, ids, managedSlots);
 
   const chart = echarts.init(null, null, { renderer: 'svg', ssr: true, width: 400, height: 300 });
   chart.setOption(option, { notMerge: true });

@@ -38,7 +38,7 @@ describe('EcChartDirective integration', () => {
 
   async function createFixture() {
     const fixture = TestBed.createComponent(TestHostComponent);
-    const chartEl = fixture.nativeElement.querySelector('ec-chart') as HTMLElement;
+    const chartEl = (fixture.nativeElement as HTMLElement).querySelector('ec-chart')!;
     // jsdom reports 0 for clientWidth/clientHeight regardless of inline styles (no real layout
     // engine). ECharts' cartesian2d coordinate-system linkage takes a different code path on a
     // zero-size container, so this stub is required to exercise the real-browser code path.
@@ -61,9 +61,9 @@ describe('EcChartDirective integration', () => {
     const option = getChartDirective(fixture).getInstance()?.getOption();
 
     expect(option).toBeDefined();
-    const xAxis = option!['xAxis'] as Array<Record<string, unknown>>;
-    const yAxis = option!['yAxis'] as Array<Record<string, unknown>>;
-    const series = option!['series'] as Array<Record<string, unknown>>;
+    const xAxis = option!['xAxis'] as Record<string, unknown>[];
+    const yAxis = option!['yAxis'] as Record<string, unknown>[];
+    const series = option!['series'] as Record<string, unknown>[];
 
     expect(xAxis).toHaveLength(1);
     expect(xAxis[0]['type']).toBe('value');
@@ -78,7 +78,7 @@ describe('EcChartDirective integration', () => {
     // No `ec-grid` directive was used, so ECharts must auto-create its own default grid[0]
     // instead of us forcing an empty `grid: []` that would leave the axes without a coordinate
     // system to attach to.
-    const grid = option!['grid'] as Array<Record<string, unknown>>;
+    const grid = option!['grid'] as Record<string, unknown>[];
     expect(grid.length).toBeGreaterThan(0);
   });
 
@@ -89,7 +89,7 @@ describe('EcChartDirective integration', () => {
     await fixture.whenStable();
 
     const option = getChartDirective(fixture).getInstance()?.getOption();
-    const series = option!['series'] as Array<Record<string, unknown>>;
+    const series = option!['series'] as Record<string, unknown>[];
 
     expect(series).toHaveLength(0);
   });
@@ -101,7 +101,7 @@ describe('EcChartDirective integration', () => {
     await fixture.whenStable();
 
     const option = getChartDirective(fixture).getInstance()?.getOption();
-    const series = option!['series'] as Array<Record<string, unknown>>;
+    const series = option!['series'] as Record<string, unknown>[];
 
     expect(series[0]['data']).toEqual([9, 8, 7]);
   });

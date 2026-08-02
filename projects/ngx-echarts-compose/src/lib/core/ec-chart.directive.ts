@@ -23,7 +23,7 @@ import type { AnyChartOption, FeatureSlot } from './types';
   providers: [{ provide: EC_CHART_HOST, useExisting: forwardRef(() => EcChartDirective) }],
 })
 export class EcChartDirective implements ChartHost {
-  private readonly elementRef = inject(ElementRef<HTMLElement>);
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
   private readonly canvas = inject(EcCanvasDirective, { optional: true, self: true });
   private readonly svg = inject(EcSvgDirective, { optional: true, self: true });
@@ -61,14 +61,12 @@ export class EcChartDirective implements ChartHost {
       const managedSlots = this.trackManagedSlots(features);
       const option = assembleOption(
         features,
-        this.options() as unknown as Record<string, unknown>,
+        this.options(),
         (feature) => this.ecId(feature as ChartFeature<AnyChartOption>),
         managedSlots,
-      ) as unknown as EChartsOption;
+      ) as EChartsOption;
 
-      if (!this.instance) {
-        this.instance = echarts.init(this.elementRef.nativeElement, this.theme());
-      }
+      this.instance ??= echarts.init(this.elementRef.nativeElement, this.theme());
 
       if (this.firstApply) {
         this.instance.setOption(option, { notMerge: true });

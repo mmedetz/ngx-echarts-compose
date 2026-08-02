@@ -28,7 +28,7 @@ export type ChartFeatureRef = ChartFeature<AnyChartOption> | string;
  */
 @Directive()
 export abstract class ChartFeature<TOption extends AnyChartOption = Record<string, unknown>> {
-  readonly elementRef = inject(ElementRef<Element>);
+  readonly elementRef = inject<ElementRef<Element>>(ElementRef);
   private readonly host = inject(EC_CHART_HOST);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -42,6 +42,8 @@ export abstract class ChartFeature<TOption extends AnyChartOption = Record<strin
 
   constructor() {
     this.host.register(this);
-    this.destroyRef.onDestroy(() => this.host.unregister(this));
+    this.destroyRef.onDestroy(() => {
+      this.host.unregister(this);
+    });
   }
 }

@@ -2,7 +2,6 @@ import {
   DestroyRef,
   Directive,
   ElementRef,
-  afterNextRender,
   afterRenderEffect,
   computed,
   forwardRef,
@@ -85,14 +84,13 @@ export class EcChartDirective implements ChartHost {
       }
     }
 
-    afterNextRender(() => {
-      this.instance = echarts.init(this.elementRef.nativeElement, this.theme());
-      this.destroyRef.onDestroy(() => this.instance?.dispose());
-    });
+    this.destroyRef.onDestroy(() => this.instance?.dispose());
 
     afterRenderEffect(() => {
       const option = this.assembledOption() as unknown as EChartsOption;
-      if (!this.instance) return;
+      if (!this.instance) {
+        this.instance = echarts.init(this.elementRef.nativeElement, this.theme());
+      }
 
       if (this.firstApply) {
         this.instance.setOption(option, { notMerge: true });

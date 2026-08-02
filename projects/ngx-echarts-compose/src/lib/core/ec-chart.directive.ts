@@ -108,7 +108,9 @@ export class EcChartDirective implements ChartHost {
 
   /** Slots are added and never removed — see the `managedSlots` note in CLAUDE.md. */
   private trackManagedSlots(features: readonly ChartFeature<AnyChartOption>[]): FeatureSlot[] {
-    features.forEach(({slot}) =>  this.everManagedSlots.add(slot));
+    for (const feature of features) {
+      this.everManagedSlots.add(feature.slot);
+    }
     return [...this.everManagedSlots];
   }
 

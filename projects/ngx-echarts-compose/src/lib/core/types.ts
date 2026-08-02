@@ -13,12 +13,22 @@ export const ARRAY_SLOTS: readonly FeatureSlot[] = ['grid', 'xAxis', 'yAxis', 's
 export type AnyChartOption = object;
 
 /**
- * The public surface `assembleOption` needs — satisfied structurally by `ChartFeature<TOption>`
- * for any `TOption`.
+ * The erased shape of any `ChartFeature<TOption>`, independent of `TOption`. Not every feature has
+ * an id — only `IdFeatureLike` ones do — so a ref target (`refs()`'s values) is always
+ * `IdFeatureLike`, never a plain `ChartFeatureLike`: only an id-bearing feature can be pointed at.
  */
 export interface ChartFeatureLike {
   readonly slot: FeatureSlot;
   options(): AnyChartOption;
   fragment(): AnyChartOption;
-  refs(): Record<string, ChartFeatureLike | string | undefined>;
+  refs(): Record<string, IdFeatureLike | string | undefined>;
+}
+
+/**
+ * A `ChartFeatureLike` that contributes to an id-addressed ECharts array slot (`grid`, `xAxis`,
+ * `yAxis`, `series`) — the public surface `assembleOption` needs, satisfied structurally by
+ * `IdFeature<TOption>` for any `TOption`.
+ */
+export interface IdFeatureLike extends ChartFeatureLike {
+  resolvedId(): string;
 }

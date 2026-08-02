@@ -1,12 +1,4 @@
-import { ARRAY_SLOTS, type ChartFeatureLike, type FeatureSlot } from './types';
-
-/**
- * Stable wire id for every feature under assembly, resolved by the caller (`EcChartDirective`)
- * before assembly runs — assembly only ever looks ids up, it never decides them. Every feature
- * reachable from `features` or a ref must have an entry; that's an invariant of the caller, not
- * something assembly re-validates.
- */
-export type FeatureIds = ReadonlyMap<ChartFeatureLike, string>;
+import { ARRAY_SLOTS, type FeatureSlot, type IdFeatureLike } from './types';
 
 /**
  * `managedSlots` are slots that have ever held a feature (see `EcChartDirective.managedSlots`).
@@ -15,9 +7,8 @@ export type FeatureIds = ReadonlyMap<ChartFeatureLike, string>;
  * template ever touches that slot.
  */
 export function assembleOption(
-  features: readonly ChartFeatureLike[],
+  features: readonly IdFeatureLike[],
   baseOptions: Record<string, unknown>,
-  ids: FeatureIds,
   managedSlots: readonly FeatureSlot[],
 ): Record<string, unknown> {
   const declarative: Record<string, unknown[]> = {};
@@ -27,10 +18,10 @@ export function assembleOption(
     const fromTemplate = features
       .filter((feature) => feature.slot === slot)
       .map((feature) => ({
-        id: ids.get(feature),
+        id: feature.resolvedId(),
         ...feature.options(),
         ...feature.fragment(),
-        ...resolveRefs(feature, ids),
+        ...resolveRefs(feature),
       }));
 
     if (fromBase.length === 0 && fromTemplate.length === 0 && !managedSlots.includes(slot)) {
@@ -43,13 +34,13 @@ export function assembleOption(
   return { ...baseOptions, ...declarative };
 }
 
-function resolveRefs(feature: ChartFeatureLike, ids: FeatureIds): Record<string, unknown> {
+function resolveRefs(feature: IdFeatureLike): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
   for (const [refKey, target] of Object.entries(feature.refs())) {
     if (target === undefined) continue;
 
-    result[`${refKey}Id`] = typeof target === 'string' ? target : ids.get(target);
+    result[`${refKey}Id`] = typeof target === 'string' ? target : target.resolvedId();
   }
 
   return result;

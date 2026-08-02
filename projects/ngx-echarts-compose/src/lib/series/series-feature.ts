@@ -1,12 +1,12 @@
 import { Directive, computed, input } from '@angular/core';
 import { AxisFeature } from '../axes/axis-feature';
-import { ChartFeature } from '../core/chart-feature';
+import { IdFeature } from '../core/chart-feature';
 import type { AnyChartOption } from '../core/types';
 
 @Directive()
 export abstract class SeriesFeature<
   TOption extends { data?: unknown } = Record<string, unknown>,
-> extends ChartFeature<TOption> {
+> extends IdFeature<TOption> {
   abstract override readonly slot: 'series';
 
   /**

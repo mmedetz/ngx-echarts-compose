@@ -4,10 +4,12 @@ import {
   ElementRef,
   InjectionToken,
   Signal,
+  computed,
   inject,
   input,
   signal,
 } from '@angular/core';
+import { FeatureIdGenerator } from './feature-id-generator';
 import type { AnyChartOption, FeatureSlot } from './types';
 
 export interface ChartHost {
@@ -17,7 +19,7 @@ export interface ChartHost {
 
 export const EC_CHART_HOST = new InjectionToken<ChartHost>('EC_CHART_HOST');
 
-export type ChartFeatureRef = ChartFeature<AnyChartOption> | string;
+export type ChartFeatureRef = IdFeature<AnyChartOption> | string;
 
 /**
  * `TOption` is the ECharts sub-option shape this feature contributes to (e.g.
@@ -32,7 +34,6 @@ export abstract class ChartFeature<TOption extends AnyChartOption = Record<strin
   private readonly host = inject(EC_CHART_HOST);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly id = input<string>();
   readonly options = input<Partial<TOption>>({});
 
   abstract readonly slot: FeatureSlot;
@@ -45,4 +46,20 @@ export abstract class ChartFeature<TOption extends AnyChartOption = Record<strin
       this.host.unregister(this);
     });
   }
+}
+
+/**
+ * A `ChartFeature` that contributes to an id-addressed ECharts array slot (`grid`, `xAxis`,
+ * `yAxis`, `series`), and can therefore be the target of a ref. `resolvedId` is `[id]` if bound,
+ * otherwise a per-chart auto id assigned once, on construction, by `FeatureIdGenerator` — stable
+ * for this directive instance's lifetime and available immediately, with no render needed.
+ */
+@Directive()
+export abstract class IdFeature<
+  TOption extends AnyChartOption = Record<string, unknown>,
+> extends ChartFeature<TOption> {
+  private readonly autoId = inject(FeatureIdGenerator).generate();
+
+  readonly id = input<string>();
+  readonly resolvedId = computed(() => this.id() ?? this.autoId);
 }

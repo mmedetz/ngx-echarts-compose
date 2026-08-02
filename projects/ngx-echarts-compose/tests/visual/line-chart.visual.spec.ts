@@ -7,7 +7,7 @@ import { GridComponent } from 'echarts/components';
 import { SVGRenderer } from 'echarts/renderers';
 import { describe, expect, it } from 'vitest';
 import { assembleOption } from '../../src/lib/core/assembly';
-import type { ChartFeatureLike } from '../../src/lib/core/types';
+import type { IdFeatureLike } from '../../src/lib/core/types';
 
 echarts.use([LineChart, BarChart, GridComponent, SVGRenderer]);
 
@@ -37,16 +37,23 @@ function normalizeZrIds(svg: string): string {
 }
 
 function feature(
-  slot: ChartFeatureLike['slot'],
+  slot: IdFeatureLike['slot'],
   fragment: Record<string, unknown>,
-  refs: ChartFeatureLike['refs'] = () => ({}),
-): ChartFeatureLike {
-  return { slot, fragment: () => fragment, options: () => ({}), refs };
+  resolvedId: string,
+  refs: IdFeatureLike['refs'] = () => ({}),
+): IdFeatureLike {
+  return {
+    slot,
+    fragment: () => fragment,
+    options: () => ({}),
+    refs,
+    resolvedId: () => resolvedId,
+  };
 }
 
 function renderLineBarChart(): string {
-  const xAxis = feature('xAxis', { type: 'value' });
-  const yAxis = feature('yAxis', { type: 'value' });
+  const xAxis = feature('xAxis', { type: 'value' }, 'x-0');
+  const yAxis = feature('yAxis', { type: 'value' }, 'y-0');
   const line = feature(
     'series',
     {
@@ -59,6 +66,7 @@ function renderLineBarChart(): string {
         [4, 17],
       ],
     },
+    'series-line',
     () => ({ xAxis, yAxis }),
   );
   const bar = feature(
@@ -73,18 +81,13 @@ function renderLineBarChart(): string {
         [4, 6],
       ],
     },
+    'series-bar',
     () => ({ xAxis, yAxis }),
   );
 
   const features = [xAxis, yAxis, line, bar];
-  const ids = new Map<ChartFeatureLike, string>([
-    [xAxis, 'x-0'],
-    [yAxis, 'y-0'],
-    [line, 'series-line'],
-    [bar, 'series-bar'],
-  ]);
   const managedSlots = [...new Set(features.map((f) => f.slot))];
-  const option = assembleOption(features, { animation: false }, ids, managedSlots);
+  const option = assembleOption(features, { animation: false }, managedSlots);
 
   const chart = echarts.init(null, null, { renderer: 'svg', ssr: true, width: 400, height: 300 });
   chart.setOption(option, { notMerge: true });

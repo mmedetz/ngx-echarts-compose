@@ -23,14 +23,18 @@ more axis/series types, presets) are not yet implemented — see [Roadmap](#road
 **Implemented**, under `projects/ngx-echarts-compose/src/lib/`:
 
 - `core/chart-feature.ts` — `ChartFeature` abstract base (self-registers via `EC_CHART_HOST`
-  injection token), `id`/`options` inputs, `refs`.
-- `core/ec-chart.directive.ts` — host directive: DOM-order feature sorting, `assembledOption`
-  computed, `afterRenderEffect` writer (`notMerge` on first apply, `replaceMerge` after),
-  `managedSlots` (sticky union of slots ever used), renderer conflict/missing checks in dev mode.
+  injection token), `options` input, `refs`; `IdFeature extends ChartFeature` adds `id` and
+  `resolvedId` for features that contribute to an id-addressed array slot.
+- `core/feature-id-generator.ts` — `FeatureIdGenerator`, a per-`<ec-chart>`-scoped injectable each
+  `IdFeature` asks for its auto id once, on construction.
+- `core/ec-chart.directive.ts` — host directive: DOM-order feature sorting, `afterRenderEffect`
+  writer (`notMerge` on first apply, `replaceMerge` after), `managedSlots` (sticky union of slots
+  ever used), renderer conflict/missing checks in dev mode.
 - `core/assembly.ts` — pure `assembleOption()` function: merges base `[options]` with template
   fragments per slot, resolves refs to `<slot>Id` fields.
 - `core/renderer.directives.ts` — `EcCanvasDirective` (`[ecCanvas]`), `EcSvgDirective` (`[ecSvg]`).
-- `core/types.ts` — `FeatureSlot` (currently `grid | xAxis | yAxis | series`), `ChartFeatureLike`.
+- `core/types.ts` — `FeatureSlot` (currently `grid | xAxis | yAxis | series`), `ChartFeatureLike`,
+  `IdFeatureLike`.
 - `axes/` — `AxisFeature` base, `EcValueXAxisDirective`, `EcValueYAxisDirective`.
 - `series/` — `SeriesFeature` base, `EcLineSeriesDirective`, `EcBarSeriesDirective`.
 
@@ -97,15 +101,21 @@ directives inside a wrapper's own view template, only projected content.
 **Identity is a stable `id`; array index is a derived wire format, recomputed on every emit.**
 ECharts' reference graph is index-based (`xAxisIndex`, `seriesIndex`, …), but index must not be
 identity across renders — removal/reorder would shift indices and cause `replaceMerge` to blend
-the wrong slots. Each feature gets a stable id (explicit `[id]`, or host-assigned via
-`WeakMap<ChartFeature, string>` on first encounter) which is emitted into every fragment and used
-to resolve refs to `<slot>Id` fields (e.g. `xAxisId`) rather than raw indices — see `resolveRefs`
-in `assembly.ts`. Inside `@for`, supply an explicit `[id]` tied to the track key, since a
-recreated directive instance is a new object and gets a new auto-id.
+the wrong slots. Only features that live in an id-addressed array slot need one — `IdFeature`
+(not every `ChartFeature`) resolves its own `resolvedId` as a `computed` over `[id]` (explicit,
+wins if bound) falling back to an auto id it asks `FeatureIdGenerator` for exactly once, on
+construction. This is fully decentralized: each feature resolves its own id independent of DOM
+order or any other feature, so it's available immediately, with no render needed — unlike array
+*position*, which does depend on DOM order and can only be computed post-render (see below).
+`assembleOption()` reads `resolvedId()` straight off each feature to fill in every fragment's `id`
+and to resolve refs to `<slot>Id` fields (e.g. `xAxisId`) rather than raw indices — see
+`resolveRefs` in `assembly.ts`. Inside `@for`, supply an explicit `[id]` tied to the track key,
+since a recreated directive instance is a new object and gets a new auto id.
 
 **Refs are bindings, not strings.** `[xAxis]="x"` where `x` is `#x="ecValueXAxis"` — type-checked,
-refactor-safe. (String ids as an escape hatch for cross-`@if`/`@for` boundaries are part of the
-type — `ChartFeatureRef = ChartFeature | string` — but not yet exercised anywhere.)
+refactor-safe, and only valid for `IdFeature` targets (a ref must point at something with a
+`resolvedId`). (String ids as an escape hatch for cross-`@if`/`@for` boundaries are part of the
+type — `ChartFeatureRef = IdFeature | string` — but not yet exercised anywhere.)
 
 **Assembly happens inside a single `afterRenderEffect`, not a `computed`.** DOM-position sorting
 (`compareDocumentPosition`) only gives correct results once the DOM has settled post-render, so
@@ -113,11 +123,12 @@ the sort, `managedSlots` tracking, and the call into `assembleOption()` all live
 methods invoked exclusively from the host's `afterRenderEffect` body — never exposed as `computed`
 fields, which could otherwise be read from anywhere (e.g. through the `#chart="ecChart"` template
 ref) at an arbitrary, possibly pre-render, time. `assembleOption()` in `assembly.ts` is still a
-pure function (features, base options, `ecId` fn, `managedSlots`) → merged option, grouping
-fragments by slot (`ARRAY_SLOTS`), keeping base `[options]` items ahead of template items in array
-position. The effect is the single writer: `notMerge` on the first call after `echarts.init()`,
-`replaceMerge: managedSlots` after. No `lazyUpdate` — `afterRenderEffect` already coalesces at the
-frame level.
+pure function (`IdFeatureLike[]`, base options, `managedSlots`) → merged option, grouping fragments
+by slot (`ARRAY_SLOTS`), keeping base `[options]` items ahead of template items in array position;
+it reads each feature's `resolvedId()` directly rather than being handed an id lookup, since (see
+above) id resolution has no DOM-order dependency of its own. The effect is the single writer:
+`notMerge` on the first call after `echarts.init()`, `replaceMerge: managedSlots` after. No
+`lazyUpdate` — `afterRenderEffect` already coalesces at the frame level.
 
 **`managedSlots` is sticky.** Once a slot (`'series'`, `'xAxis'`, …) has held a feature, it's kept
 in `replaceMerge`'s slot list for the instance's lifetime, even if the last feature in that slot is

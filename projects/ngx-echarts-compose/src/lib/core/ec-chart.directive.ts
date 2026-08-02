@@ -31,7 +31,7 @@ export class EcChartDirective implements ChartHost {
   readonly options = input<EChartsOption>({});
   readonly theme = input<string | object | undefined>(undefined);
 
-  private readonly registered = signal<readonly ChartFeature<AnyChartOption>[]>([]);
+  private readonly registered = signal<ReadonlySet<ChartFeature<AnyChartOption>>>(new Set());
   private readonly everManagedSlots = new Set<FeatureSlot>();
   /** Auto-assigned ids, cached per feature so they stay stable across renders. */
   private readonly autoIds = new WeakMap<ChartFeature<AnyChartOption>, string>();
@@ -60,7 +60,7 @@ export class EcChartDirective implements ChartHost {
       // DOM-position sort reads live DOM state (compareDocumentPosition), so it — and everything
       // downstream of it — may only run here, post-render. Nothing outside this callback may call
       // sortByDomPosition or trackManagedSlots.
-      const features = this.sortByDomPosition(this.registered());
+      const features = this.sortByDomPosition([...this.registered()]);
       const managedSlots = this.trackManagedSlots(features);
       this.resolvedIds = this.resolveIds(features);
       const option = assembleOption(
@@ -82,11 +82,15 @@ export class EcChartDirective implements ChartHost {
   }
 
   register(feature: ChartFeature<AnyChartOption>): void {
-    this.registered.update((list) => [...list, feature]);
+    this.registered.update((set) => new Set(set).add(feature));
   }
 
   unregister(feature: ChartFeature<AnyChartOption>): void {
-    this.registered.update((list) => list.filter((f) => f !== feature));
+    this.registered.update((set) => {
+      const next = new Set(set);
+      next.delete(feature);
+      return next;
+    });
   }
 
   getInstance(): ECharts | undefined {

@@ -107,12 +107,17 @@ recreated directive instance is a new object and gets a new auto-id.
 refactor-safe. (String ids as an escape hatch for cross-`@if`/`@for` boundaries are part of the
 type — `ChartFeatureRef = ChartFeature | string` — but not yet exercised anywhere.)
 
-**Assembly is a `computed`; writing is a single `afterRenderEffect`.** `assembleOption()` in
-`assembly.ts` is a pure function (features, base options, `ecId` fn, `managedSlots`) → merged
-option, grouping fragments by slot (`ARRAY_SLOTS`), keeping base `[options]` items ahead of
-template items in array position. The host's `afterRenderEffect` is the single writer: `notMerge`
-on the first call after `echarts.init()`, `replaceMerge: managedSlots()` after. No `lazyUpdate` —
-`afterRenderEffect` already coalesces at the frame level.
+**Assembly happens inside a single `afterRenderEffect`, not a `computed`.** DOM-position sorting
+(`compareDocumentPosition`) only gives correct results once the DOM has settled post-render, so
+the sort, `managedSlots` tracking, and the call into `assembleOption()` all live as private helper
+methods invoked exclusively from the host's `afterRenderEffect` body — never exposed as `computed`
+fields, which could otherwise be read from anywhere (e.g. through the `#chart="ecChart"` template
+ref) at an arbitrary, possibly pre-render, time. `assembleOption()` in `assembly.ts` is still a
+pure function (features, base options, `ecId` fn, `managedSlots`) → merged option, grouping
+fragments by slot (`ARRAY_SLOTS`), keeping base `[options]` items ahead of template items in array
+position. The effect is the single writer: `notMerge` on the first call after `echarts.init()`,
+`replaceMerge: managedSlots` after. No `lazyUpdate` — `afterRenderEffect` already coalesces at the
+frame level.
 
 **`managedSlots` is sticky.** Once a slot (`'series'`, `'xAxis'`, …) has held a feature, it's kept
 in `replaceMerge`'s slot list for the instance's lifetime, even if the last feature in that slot is

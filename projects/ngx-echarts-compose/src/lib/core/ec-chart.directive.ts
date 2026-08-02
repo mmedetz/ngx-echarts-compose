@@ -3,7 +3,6 @@ import {
   Directive,
   ElementRef,
   afterRenderEffect,
-  computed,
   forwardRef,
   inject,
   input,
@@ -39,38 +38,6 @@ export class EcChartDirective implements ChartHost {
   private instance?: ECharts;
   private firstApply = true;
 
-  /** Features sorted by DOM position — the assembly source of truth. */
-  readonly features = computed(() => {
-    const list = this.registered();
-    if (list.length <= 1) return list;
-    return [...list].sort((a, b) => {
-      const position = a.elementRef.nativeElement.compareDocumentPosition(
-        b.elementRef.nativeElement,
-      );
-      return position & Node.DOCUMENT_POSITION_FOLLOWING
-        ? -1
-        : position & Node.DOCUMENT_POSITION_PRECEDING
-          ? 1
-          : 0;
-    });
-  });
-
-  readonly managedSlots = computed(() => {
-    for (const feature of this.features()) {
-      this.everManagedSlots.add(feature.slot);
-    }
-    return [...this.everManagedSlots];
-  });
-
-  readonly assembledOption = computed(() =>
-    assembleOption(
-      this.features(),
-      this.options() as unknown as Record<string, unknown>,
-      (feature) => this.ecId(feature as ChartFeature<AnyChartOption>),
-      this.managedSlots(),
-    ),
-  );
-
   constructor() {
     if (isDevMode()) {
       if (this.canvas && this.svg) {
@@ -87,7 +54,18 @@ export class EcChartDirective implements ChartHost {
     this.destroyRef.onDestroy(() => this.instance?.dispose());
 
     afterRenderEffect(() => {
-      const option = this.assembledOption() as unknown as EChartsOption;
+      // DOM-position sort reads live DOM state (compareDocumentPosition), so it — and everything
+      // downstream of it — may only run here, post-render. Nothing outside this callback may call
+      // sortByDomPosition or trackManagedSlots.
+      const features = this.sortByDomPosition(this.registered());
+      const managedSlots = this.trackManagedSlots(features);
+      const option = assembleOption(
+        features,
+        this.options() as unknown as Record<string, unknown>,
+        (feature) => this.ecId(feature as ChartFeature<AnyChartOption>),
+        managedSlots,
+      ) as unknown as EChartsOption;
+
       if (!this.instance) {
         this.instance = echarts.init(this.elementRef.nativeElement, this.theme());
       }
@@ -96,7 +74,7 @@ export class EcChartDirective implements ChartHost {
         this.instance.setOption(option, { notMerge: true });
         this.firstApply = false;
       } else {
-        this.instance.setOption(option, { replaceMerge: this.managedSlots() });
+        this.instance.setOption(option, { replaceMerge: managedSlots });
       }
     });
   }
@@ -111,6 +89,31 @@ export class EcChartDirective implements ChartHost {
 
   getInstance(): ECharts | undefined {
     return this.instance;
+  }
+
+  /** Sorts by DOM position — the assembly source of truth. Only call post-render. */
+  private sortByDomPosition(
+    list: readonly ChartFeature<AnyChartOption>[],
+  ): readonly ChartFeature<AnyChartOption>[] {
+    if (list.length <= 1) return list;
+    return [...list].sort((a, b) => {
+      const position = a.elementRef.nativeElement.compareDocumentPosition(
+        b.elementRef.nativeElement,
+      );
+      return position & Node.DOCUMENT_POSITION_FOLLOWING
+        ? -1
+        : position & Node.DOCUMENT_POSITION_PRECEDING
+          ? 1
+          : 0;
+    });
+  }
+
+  /** Slots are added and never removed — see the `managedSlots` note in CLAUDE.md. */
+  private trackManagedSlots(features: readonly ChartFeature<AnyChartOption>[]): FeatureSlot[] {
+    for (const feature of features) {
+      this.everManagedSlots.add(feature.slot);
+    }
+    return [...this.everManagedSlots];
   }
 
   private ecId(feature: ChartFeature<AnyChartOption>): string {
